@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turniej FIFA 2025 - PUCHAR WĄGROWCA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+            margin: auto;
+        }
+        h1, h2 {
+            font-weight: 700;
+        }
+        .match-container {
+            margin-top: 20px;
+        }
+        .match {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            width: 45%;
+            min-width: 280px;
+            margin: 10px auto;
+        }
+        .match input {
+            width: 60px;
+            text-align: center;
+            margin: 10px 10px;
+            border: none;
+            padding: 5px;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        .match button {
+            margin-top: 10px;
+            padding: 8px 15px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .match button:hover {
+            background-color: #218838;
+        }
+        .leaderboard-container {
+            margin-top: 40px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0, 255, 255, 0.5);
+        }
+        th, td {
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 12px;
+            text-align: center;
+            color: white;
+        }
+        th {
+            background-color: rgba(0, 123, 255, 0.8);
+            text-transform: uppercase;
+        }
+        tbody tr:nth-child(odd) {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Turniej FIFA 2025 - PUCHAR WĄGROWCA</h1>
+        <h2>Wpisz wyniki meczów</h2>
+        <div id="matches" class="match-container"></div>
+        <div class="leaderboard-container">
+            <h2>Aktualna tabela</h2>
+            <table id="leaderboard">
+                <thead>
+                    <tr>
+                        <th>Gracz</th>
+                        <th>Mecze</th>
+                        <th>Wygrane</th>
+                        <th>Remisy</th>
+                        <th>Porażki</th>
+                        <th>Punkty</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <div class="leaderboard-container">
+            <h2>Podsumowanie</h2>
+            <table id="ranking">
+                <thead>
+                    <tr>
+                        <th>Ranking</th>
+                        <th>Gracz</th>
+                        <th>Punkty</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+    <script>
+        const players = ["Bini", "Rower", "Skiera", "Maciek", "Michu", "Majkel", "Erzkoy"];
+        let results = JSON.parse(localStorage.getItem("tournamentResults")) || {};
+
+        function generateMatches() {
+            let matchesDiv = document.getElementById("matches");
+            matchesDiv.innerHTML = "";
+            let matchList = [];
+
+            players.forEach((p1, i) => {
+                players.forEach((p2, j) => {
+                    if (i < j) {
+                        matchList.push([p1, p2]);
+                    }
+                });
+            });
+
+            matchList.forEach(([p1, p2], index) => {
+                let matchKey = `${p1} vs ${p2}`;
+                let storedResult = results[matchKey] || "";
+                matchesDiv.innerHTML += `<div class="match">
+                    <label>${p1} vs ${p2}</label><br>
+                    <input type="text" id="match_${index}" value="${storedResult}" placeholder="0-0" />
+                    <button onclick="saveResult('${p1}', '${p2}', 'match_${index}')">Zapisz</button>
+                    <button onclick="clearResult('${p1}', '${p2}', 'match_${index}')">Wyczyść</button>
+                </div>`;
+            });
+        }
+
+        function saveResult(p1, p2, inputId) {
+            let score = document.getElementById(inputId).value;
+            if (!score.match(/^\d+-\d+$/)) {
+                alert("Wynik musi być w formacie X-Y");
+                return;
+            }
+            results[`${p1} vs ${p2}`] = score;
+            localStorage.setItem("tournamentResults", JSON.stringify(results));
+            updateLeaderboard();
+        }
+
+        function clearResult(p1, p2, inputId) {
+            document.getElementById(inputId).value = '';
+            delete results[`${p1} vs ${p2}`];
+            localStorage.setItem("tournamentResults", JSON.stringify(results));
+            updateLeaderboard();
+        }
+
+        function updateLeaderboard() {
+            let scores = {};
+            players.forEach(p => scores[p] = { matches: 0, wins: 0, draws: 0, losses: 0, points: 0 });
+
+            Object.entries(results).forEach(([match, score]) => {
+                let [p1, p2] = match.split(" vs ");
+                let [s1, s2] = score.split("-").map(Number);
+
+                scores[p1].matches++;
+                scores[p2].matches++;
+
+                if (s1 > s2) {
+                    scores[p1].wins++;
+                    scores[p1].points += 3;
+                    scores[p2].losses++;
+                } else if (s1 < s2) {
+                    scores[p2].wins++;
+                    scores[p2].points += 3;
+                    scores[p1].losses++;
+                } else {
+                    scores[p1].draws++;
+                    scores[p2].draws++;
+                    scores[p1].points++;
+                    scores[p2].points++;
+                }
+            });
+
+            let tbody = document.querySelector("#leaderboard tbody");
+            tbody.innerHTML = "";
+            Object.entries(scores).sort((a, b) => b[1].points - a[1].points).forEach(([player, stats]) => {
+                tbody.innerHTML += `<tr>
+                    <td>${player}</td>
+                    <td>${stats.matches}</td>
+                    <td>${stats.wins}</td>
+                    <td>${stats.draws}</td>
+                    <td>${stats.losses}</td>
+                    <td>${stats.points}</td>
+                </tr>`;
+            });
+
+            updateRanking();
+        }
+
+        function updateRanking() {
+            let rankingTbody = document.querySelector("#ranking tbody");
+            rankingTbody.innerHTML = "";
+
+            let scores = {};
+            players.forEach(p => scores[p] = { points: 0 });
+
+            Object.entries(results).forEach(([match, score]) => {
+                let [p1, p2] = match.split(" vs ");
+                let [s1, s2] = score.split("-").map(Number);
+
+                if (s1 > s2) {
+                    scores[p1].points += 3;
+                } else if (s1 < s2) {
+                    scores[p2].points += 3;
+                } else {
+                    scores[p1].points += 1;
+                    scores[p2].points += 1;
+                }
+            });
+
+            let sortedScores = Object.entries(scores).sort((a, b) => b[1].points - a[1].points);
+            sortedScores.forEach(([player, stats], index) => {
+                rankingTbody.innerHTML += `<tr>
+                    <td>${index + 1}</td>
+                    <td>${player}</td>
+                    <td>${stats.points}</td>
+                </tr>`;
+            });
+        }
+
+        generateMatches();
+        updateLeaderboard();
+    </script>
+</body>
+</html>
