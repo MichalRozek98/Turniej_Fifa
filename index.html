@@ -21,21 +21,27 @@
             border-radius: 15px;
             box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
             margin: auto;
+            overflow: hidden;
         }
         h1, h2 {
             font-weight: 700;
+            font-size: 2rem;
         }
         .match-container {
             margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+            justify-items: center;
         }
         .match {
             background: rgba(255, 255, 255, 0.15);
             padding: 15px;
             border-radius: 10px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-            width: 45%;
+            width: 100%;
             min-width: 280px;
-            margin: 10px auto;
+            text-align: center;
         }
         .match input {
             width: 60px;
@@ -70,12 +76,14 @@
             border-radius: 10px;
             overflow: hidden;
             box-shadow: 0 4px 10px rgba(0, 255, 255, 0.5);
+            table-layout: fixed;
         }
         th, td {
             border: 1px solid rgba(255, 255, 255, 0.3);
             padding: 12px;
             text-align: center;
             color: white;
+            word-wrap: break-word;
         }
         th {
             background-color: rgba(0, 123, 255, 0.8);
@@ -83,6 +91,40 @@
         }
         tbody tr:nth-child(odd) {
             background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Media Queries for responsiveness */
+        @media (max-width: 768px) {
+            h1, h2 {
+                font-size: 1.5rem;
+            }
+            .match-container {
+                grid-template-columns: 1fr;
+            }
+            table {
+                font-size: 0.9rem;
+                overflow-x: auto;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            h1, h2 {
+                font-size: 1.2rem;
+            }
+            .match input {
+                font-size: 0.9rem;
+                width: 50px;
+            }
+            .match button {
+                font-size: 0.9rem;
+                padding: 6px 12px;
+            }
+            table {
+                font-size: 0.8rem;
+            }
         }
     </style>
 </head>
@@ -108,11 +150,11 @@
             </table>
         </div>
         <div class="leaderboard-container">
-            <h2>Podsumowanie</h2>
-            <table id="ranking">
+            <h2>Podsumowanie wyników</h2>
+            <table id="final-leaderboard">
                 <thead>
                     <tr>
-                        <th>Ranking</th>
+                        <th>Miejsce</th>
                         <th>Gracz</th>
                         <th>Punkty</th>
                     </tr>
@@ -121,15 +163,16 @@
             </table>
         </div>
     </div>
+
     <script>
         const players = ["Bini", "Rower", "Skiera", "Maciek", "Michu", "Majkel", "Erzkoy"];
         let results = JSON.parse(localStorage.getItem("tournamentResults")) || {};
-
+        
         function generateMatches() {
             let matchesDiv = document.getElementById("matches");
             matchesDiv.innerHTML = "";
             let matchList = [];
-
+            
             players.forEach((p1, i) => {
                 players.forEach((p2, j) => {
                     if (i < j) {
@@ -137,7 +180,7 @@
                     }
                 });
             });
-
+            
             matchList.forEach(([p1, p2], index) => {
                 let matchKey = `${p1} vs ${p2}`;
                 let storedResult = results[matchKey] || "";
@@ -149,7 +192,7 @@
                 </div>`;
             });
         }
-
+        
         function saveResult(p1, p2, inputId) {
             let score = document.getElementById(inputId).value;
             if (!score.match(/^\d+-\d+$/)) {
@@ -159,26 +202,28 @@
             results[`${p1} vs ${p2}`] = score;
             localStorage.setItem("tournamentResults", JSON.stringify(results));
             updateLeaderboard();
+            updateFinalLeaderboard();
         }
 
         function clearResult(p1, p2, inputId) {
-            document.getElementById(inputId).value = '';
+            document.getElementById(inputId).value = "";
             delete results[`${p1} vs ${p2}`];
             localStorage.setItem("tournamentResults", JSON.stringify(results));
             updateLeaderboard();
+            updateFinalLeaderboard();
         }
-
+        
         function updateLeaderboard() {
             let scores = {};
             players.forEach(p => scores[p] = { matches: 0, wins: 0, draws: 0, losses: 0, points: 0 });
-
+            
             Object.entries(results).forEach(([match, score]) => {
                 let [p1, p2] = match.split(" vs ");
                 let [s1, s2] = score.split("-").map(Number);
-
+                
                 scores[p1].matches++;
                 scores[p2].matches++;
-
+                
                 if (s1 > s2) {
                     scores[p1].wins++;
                     scores[p1].points += 3;
@@ -194,7 +239,7 @@
                     scores[p2].points++;
                 }
             });
-
+            
             let tbody = document.querySelector("#leaderboard tbody");
             tbody.innerHTML = "";
             Object.entries(scores).sort((a, b) => b[1].points - a[1].points).forEach(([player, stats]) => {
@@ -207,21 +252,16 @@
                     <td>${stats.points}</td>
                 </tr>`;
             });
-
-            updateRanking();
         }
 
-        function updateRanking() {
-            let rankingTbody = document.querySelector("#ranking tbody");
-            rankingTbody.innerHTML = "";
-
+        function updateFinalLeaderboard() {
             let scores = {};
             players.forEach(p => scores[p] = { points: 0 });
-
+            
             Object.entries(results).forEach(([match, score]) => {
                 let [p1, p2] = match.split(" vs ");
                 let [s1, s2] = score.split("-").map(Number);
-
+                
                 if (s1 > s2) {
                     scores[p1].points += 3;
                 } else if (s1 < s2) {
@@ -231,10 +271,11 @@
                     scores[p2].points += 1;
                 }
             });
-
-            let sortedScores = Object.entries(scores).sort((a, b) => b[1].points - a[1].points);
-            sortedScores.forEach(([player, stats], index) => {
-                rankingTbody.innerHTML += `<tr>
+            
+            let finalTable = document.querySelector("#final-leaderboard tbody");
+            finalTable.innerHTML = "";
+            Object.entries(scores).sort((a, b) => b[1].points - a[1].points).forEach(([player, stats], index) => {
+                finalTable.innerHTML += `<tr>
                     <td>${index + 1}</td>
                     <td>${player}</td>
                     <td>${stats.points}</td>
@@ -244,6 +285,7 @@
 
         generateMatches();
         updateLeaderboard();
+        updateFinalLeaderboard();
     </script>
 </body>
 </html>
